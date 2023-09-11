@@ -3,7 +3,7 @@ import os
 current_directory = os.getcwd()
 import sys
 sys.path.append(current_directory)
-from artus_3d_api import Artus3DAPI
+from Artus3DAPI import Artus3DAPI
 import keyboard
 
 # import grasps

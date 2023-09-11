@@ -3,7 +3,7 @@ import os
 current_directory = os.getcwd()
 import sys
 sys.path.append(current_directory)
-from artus_3d_api import Artus3DAPI
+from Artus3DAPI import Artus3DAPI
 
 
 def user_input_function():
@@ -48,7 +48,7 @@ def example():
         elif user_input == "2":
             hand_robot_api.calibrate()
         elif user_input == "3":
-            with open("grasp_patterns\\joint_control_command.txt", "r") as f:
+            with open(os.join("grasp_patterns","joint_control_command.txt"), "r") as f:
                 command = f.read()
         #     # send command to robot   
             if command != "":
@@ -73,12 +73,12 @@ def example():
             hand_robot_api.reset_low(user_input,user_act)
         
         elif user_input == "8":
-            with open("grasp_patterns/grasp_open.txt", "r") as f:
+            with open(os.join("grasp_patterns","grasp_open.txt"), "r") as f:
                 command = f.read()
                 if command != "":
                     hand_robot_api.send(command)
         elif user_input == "9":
-            with open("grasp_patterns/grasp.txt", "r") as f:
+            with open(os.join("grasp_patterns","grasp.txt"), "r") as f:
                 command = f.read()
                 if command != "":
                     hand_robot_api.send(command)

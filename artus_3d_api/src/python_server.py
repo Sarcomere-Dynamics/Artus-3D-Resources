@@ -1,6 +1,8 @@
 import socket
 import time
 import os
+import subprocess
+import platform
 
 class PythonServer:
 
@@ -10,14 +12,40 @@ class PythonServer:
                  DISCONNECT_MESSAGE = "!DISCONNECT", # Disconnection message from the client
                  port= 5050,
                  reqReturnFlag= False,
-                 DONECOMMAND = 211):
+                 DONECOMMAND = 211,
+                 target_ssid="Artus3DTester"):
         
         self.HEADER = HEADER
         self.FORMAT = FORMAT
         self.DISCONNECT_MESSAGE = DISCONNECT_MESSAGE
+
+        self.target_ssid = target_ssid
         
         # get ip automatically
-        self.server = socket.gethostbyname(socket.gethostname()) # 192.168.4.2
+        # self.server = socket.gethostbyname(socket.gethostname()) # 192.168.4.2
+
+        # get ip for specific ssid value
+        # windows
+        if platform.system() == "Windows":
+            try:
+                output = subprocess.check_output(['netsh','interface','show','interface'],universal_newlines=True)
+                for line in output.splitlines():
+                    if self.target_ssid in line:
+                        interface = line.split()[0]
+                        ip = socket.gethostbyname(socket.gethostbyname)
+                        self.ip = ip
+            except subprocess.CalledProcessError:
+                pass
+        elif platform.system == "Linux":
+            try:
+                output = subprocess.check_output(['iwgetid'], universal_newlines=True)
+                if self.target_ssid in output:
+                    ip = socket.gethostbyname(socket.gethostname())
+                    self.ip = ip
+            except subprocess.CalledProcessError:
+                pass
+        
+
         # Port Number
         self.port = port
         # TCP tuple

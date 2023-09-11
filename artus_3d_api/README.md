@@ -35,16 +35,35 @@ Provides an API for controlling the Artus 3D dexterous robotic hand.
 
 **Parameters**:
 - **communication_method**: Communication method to use. Can be either 'WiFi' or 'UART'. Defaults to 'WiFi'.
+- **PORT**: If 'UART' is chosen, then specify port
+- **TARGET_SSID**: need to copy name of Artus 3D Wifi network here
 
 **Methods**:
-- **start()**: Starts the API.
-- **calibrate()**: Sends calibration command to the hand.
-- **send_command(joint_control_command: str)**: Sends the joint control command to the hand.
+- **`start()`**: Initalize the hand.
+- **`set_joint_dictionary(key:str,joint_angle:int,joint_speed:int)`**: set the joint angle and joint speed of a single joint.
+- **`set_joint_angles_dictionary(joint_angles_dict: dict)`**: Copy a joint dictionary with matching keys to the class joint dictionary for use. Auto fills velocities to default velocities if missing
     - **"joint_control_command" structure**: "c176p"+joint_positions_list_str+"v"+joint_velocities_list_str+"end\n"
-- **save_grasp_pattern(name: str)**: Saves the current joint configuration as a grasp pattern (joint control command).
-- **get_grasp_pattern(name: str)**: Returns the joint control command of a saved grasp pattern.
-- **get_robot_states()**: Gets the robot states from the hand.
-- **get_debug_message()**: Gets the debug message from the hand.
+- **`set_robot_command_from_dictionary()`**: set the robot command from the joint dictionary
+- **`set_joint_angles()`**: set joint angles if known joint map index
+- **`set_joint_velocities()`**: set joint velocities if known joint map index
+- **`set_command()`**: set command code
+- **`set_robot_command()`**: set robot command message to send to hand
+- **`get_robot_states()`**: Gets the robot states from the hand.
+- **`get_debug_message()`**: Gets the debug message from the hand.
+- **`save_grasp_pattern(name: str)`**: Saves the current joint configuration as a grasp pattern (joint control command).
+- **`get_grasp_pattern(name: str)`**: Returns the joint control command of a saved grasp pattern.
+- **`get_robot_states()`**: Gets the robot states from the hand. 
+    - **"robot_states_str" structure**: "a{x}p"+joint_positions_list_str+"t"+joint_temperatures_list_str+"c"+joint_currents_list_str+"end\n"
+    - **"robot_states_" structure**: {
+        'positions' : [position array (deg)],
+        'temperatures' : [temperature array (C)]
+        'currents' : [current array (mA)]
+    }
+- **`save_grasp_pattern(name: str)`**: Save the robot states from the hand.
+- **`calibrate()`**: Calibrate the hand.
+- **`flash_file()`**: flash stms.
+- **`close()`**: close the connection to the hand.
+
 
 ## Joint Array Map
 numbered from thumb to pinky, base to tip.
