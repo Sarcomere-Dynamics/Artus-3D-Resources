@@ -6,8 +6,8 @@ Sarcomere Dynamics Inc.
 
 # imports
 import time
-import numpy as np
 import json
+import logging
 
 import os
 import sys
@@ -19,17 +19,18 @@ class Artus3DAPI:
     def __init__(self,
                  communication_method = 'WiFi',
                  port='COM9',
-                 target_ssid = 'Artus3DTester'):
+                 target_ssid = 'Artus3DTester'
+                 ):
         
         self.target_ssid = target_ssid
         self.communication_method = communication_method
         self.port = port
 
         # command codes
-        self.target = '176'
-        self.calibrate = '55'
-        self.start = '88'
-        self.getstates = '10'
+        self.target_cmd = '176'
+        self.calibrate_cmd = '55'
+        self.start_cmd = '88'
+        self.getstates_cmd = '10'
         self.empty_message = "[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n"
 
         # placeholders for values
@@ -39,29 +40,39 @@ class Artus3DAPI:
                             'middle_flex','middle_spread','middle_d2','ring_flex','ring_spread','ring_d2','pinky_flex',
                             'pinky_spread','pinky_d2']
         
-        # create dictionaries
+        # temporary dictionaries for constraints, joint parameters to be set and joint states to be read
         constraints = {
             'max':[90,30,90,90,90,15,90,90,15,90,90,15,90,90,15,90],
             'min':[0,-30,0,0,0,-15,0,0,-15,0,0,-15,0,0,-15,0]
         }
         joint_params = {
-            'positions': [0]*16,
-            'velocities': [self.default_velocity]*16
+            'position': [0]*16,
+            'velocity': [self.default_velocity]*16
         }
         joint_states = {
-            'positions': [0]*16,
-            'temperatures': [0]*16,
-            'currents': [0]*16
+            'position': [0]*16,
+            'temperature': [0]*16,
+            'current': [0]*16
         }
 
+        # create class variables
         self.constraints = self.joint_params = self.joint_states = None
+
+        # create array for recursion
         populate = [self.constraints,self.joint_names,self.joint_params]
         info = [constraints,joint_params,joint_states]
 
+        # populate array of dictionaries to be set to class variables
         for j in range(len(info)):
             # max and min constraints on angles
-            populate[j] = {key:{v[i] for k,v in info[j].items()} for i,key in enumerate(self.joint_names)}
+            populate[j] = {key:{k:v[i] for k,v in info[j].items()} for i,key in enumerate(self.joint_names)}
 
+        # create dictionaries with the following structure
+        # |
+        # |->    joint_name
+        #           |->     constraint (max,min)
+        #           |->     joint params (position,velocity)
+        #           |->     joint states (position,temperature,current)      
         self.constraints = populate[0]
         self.joint_params = populate[1]
         self.joint_states = populate[2]
@@ -73,6 +84,18 @@ class Artus3DAPI:
         self.python_serial = PythonEsp32Serial(port=self.port)
 
     '''
+    Getters for variables
+    '''
+    def get_constraints(self):
+        return self.constraints
+    
+    def get_joint_params(self):
+        return self.joint_params
+    
+    def get_joint_states(self):
+        return self.joint_states
+
+    '''
     Start the connection to the Robot Hand and send the Robot Hand a start command
     '''
     def start_connection(self):
@@ -81,7 +104,7 @@ class Artus3DAPI:
             try:
                 self.python_server.start()
             except Exception as e:
-                print("Server not connected")
+                logging.error("error starting python server")
                 print(e)
                 pass
 
@@ -92,7 +115,7 @@ class Artus3DAPI:
                 for i in range(self.python_serial.esp32.in_waiting):
                     self.python_serial.receive()
             except Exception as e:
-                print("UART not connected")
+                logging.error("error starting serial connection")
                 print(e)
                 pass
 
@@ -117,28 +140,33 @@ class Artus3DAPI:
             second = '0'+ second
 
         self.robot_command = "c88p[20,+"+year+",+"+month+",+"+day+",+"+hour+",+"+minute+",+"+second+",00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n"
+        
         # send command
-        self.send(self.robot_command)
+        self._send(self.robot_command)
+        return self.robot_command
     
     '''
     Close the connection between the server and the Robot Hand
     '''
     def close_connection(self):
-        # retrieve files either over WiFi or UART
-        if self.communication_method == "WiFi": # wifi
-            self.python_server.close()
-            
-        elif self.communication_method == "UART": # uart
-            self.python_serial.close()
+        try:
+            # retrieve files either over WiFi or UART
+            if self.communication_method == "WiFi": # wifi
+                self.python_server.close()
+                
+            elif self.communication_method == "UART": # uart
+                self.python_serial.close()
+        except Exception as e:
+            logging.warning("unable to close connection")
 
     '''
     Send a target command
     '''
     def send_target_command(self):
-        self.command = self.target
+        self.command = self.target_cmd
 
         # look at constraints
-        for key in self.joint_params[self.joint_names[0]]:
+        for key in ['max','min']:
             self._compare_constraints(self.constraints,self.joint_params,key)
 
         # change all values to integers
@@ -149,9 +177,12 @@ class Artus3DAPI:
         # set the command
         self.robot_command = 'c{0}p[{1}]v[{2}]end\n'.format(
             self.command,
-            ','.join(map(str,[inner_dict['positions'] for inner_dict in self.joint_params])),
-            ','.join(map(str,[inner_dict['velocities'] for inner_dict in self.joint_params]))
+            ','.join(str(inner_dict['position']) for inner_dict in self.joint_params.values()),
+            ','.join(str(inner_dict['velocity']) for inner_dict in self.joint_params.values())
         )
+
+        self._send(self.robot_command)
+        return self.joint_params
     ''' 
     save grasp pattern from self.robot_command into separate text file
     '''
@@ -169,6 +200,8 @@ class Artus3DAPI:
                     f.write(self.robot_command)
             else: 
                 print("File not overwritten..")
+
+        return self.robot_command
     '''
     Load grasp pattern into self.robot_command from text file
     '''
@@ -185,18 +218,17 @@ class Artus3DAPI:
                 tmp_cmd = f.read()
                 self.robot_command = tmp_cmd
 
-        
+        return self.robot_command
     '''
     Get states from Robot Hand
     '''
     def get_robot_states(self):
-        robot_states_command = "c10p"+self.empty_message
 
-        self.send(robot_states_command)
+        self._send("c10p"+self.empty_message)
 
         str_return = ''
         while str_return == '':
-            str_return = self.receive()
+            str_return = self._receive()
 
         # if empty Mk5+ compatible
         if "position" in str_return:
@@ -206,7 +238,18 @@ class Artus3DAPI:
         states_return = json.loads(valid_json_return)
 
         # return to form of self.joint_states
-        self.joint_states = {key: {k:v[i] for k,v in states_return.items()} for i,key in enumerate(self.joint_names)}
+        new_joint_states = {key: {k:v[i] for k,v in states_return.items()} for i,key in enumerate(self.joint_names)}
+
+        # update values in joint states dictionary
+        self.update_joint_states(new_joint_states)
+
+        return self.joint_states
+    '''
+    Update joint states such to be read out by users
+    '''
+    def update_joint_states(self,new_data:dict):
+        self._update_dict(self.joint_states,new_data)
+        return self.joint_states
 
     '''
     Reset specified actuator finger back to 0 chosen through parameter
@@ -218,7 +261,8 @@ class Artus3DAPI:
             joint = '0'+joint
         self.robot_command = "c12p["+joint+",0"+act+",00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n"
         # send command
-        self.send(self.robot_command)
+        self._send(self.robot_command)
+        return self.robot_command
 
     '''
     Helper function to compare position to position hard min/max
@@ -226,18 +270,20 @@ class Artus3DAPI:
     def _compare_constraints(self,constraint:dict,data:dict,constraint_key:str):
         for key,inner_dict in data.items():
             # replace mins
-            if constraint_key == 'min' and inner_dict['positions'] < constraint[key][constraint_key]:
-                inner_dict['positions'] = constraint[key][constraint_key]
+            if constraint_key == 'min' and inner_dict['position'] < constraint[key][constraint_key]:
+                inner_dict['position'] = constraint[key][constraint_key]
             # replace maxs
-            elif constraint_key == 'max' and inner_dict['positions'] > constraint[key][constraint_key]:
-                inner_dict['positions'] = constraint[key][constraint_key]
-    
+            elif constraint_key == 'max' and inner_dict['position'] > constraint[key][constraint_key]:
+                inner_dict['position'] = constraint[key][constraint_key]
+
+        return data
     '''
     Update joint angles and velocity values in joint_params with matching keys of a dictionary given as a parameter
     @param: user joint angle/velocity dictionary with matching naming convention
     '''
     def update_joint_params(self,user_joint_dictionary:dict):
         self._update_dict(self.joint_params,user_joint_dictionary)
+        return self.joint_params
 
     '''
     Recursive helper function to update dictionary values with matching keys
@@ -250,47 +296,48 @@ class Artus3DAPI:
                 target[key] = value
 
     '''
-    Send a command to the Robot Hand
+    Send a target command to the Robot Hand
     '''
-    def send(self, message):
-        # Send Command to Robot based on communication method
-        if self.communication_method == "WiFi": # wifi
-
-            message = self._check_command_string(message)
-            print(message)
-            # return
-            self.python_server.send(message)
-        elif self.communication_method == "UART": # uart
-            self.python_serial.send(message)
+    def _send(self, message):
+        try:
+            # Send Command to Robot based on communication method
+            if self.communication_method == "WiFi": # wifi
+                message = self._check_command_string(message)
+                print(message)
+                # return
+                self.python_server.send(message)
+            elif self.communication_method == "UART": # uart
+                self.python_serial.send(message)
+        except Exception as e:
+            logging.warning("unable to send command")
+            print(e)
+            pass
     
-    '''
-    Send a message in bytes to the Robot Hand
-    '''
-    def sendBytes(self, message):
-        # Send Command to Robot based on communication method
-        if self.communication_method == "WiFi": # wifi
-
-            # message = self._check_command_string(message)
-            # print(message)
-            # return
-            self.python_server.sendBytes(message)
-        elif self.communication_method == "UART": # uart
-            self.python_serial.send(message)
-
     '''
     Receive a message from the Robot Hand
     '''
-    def receive(self):
+    def _receive(self):
         """
         Recieve Command from Robot
         """
-        if self.communication_method == "WiFi": # wifi
-            message  = self.python_server.receive()
+        try:    
+            if self.communication_method == "WiFi": # wifi
+                message  = self.python_server.receive()
 
-        elif self.communication_method == "UART": # uart
-            message  = self.python_serial.receive()
+            elif self.communication_method == "UART": # uart
+                message  = self.python_serial.receive()
+        except Exception as e:
+            logging.warning("unable to receive message")
+            print(e)
 
         return message
+
+    '''
+    Calibrate Robot Hand
+    '''
+    def calibrate(self):
+        self.robot_command = self.calibrate_cmd+self.empty_message
+        self._send(self.robot_command)
 
     '''
     Upload actuator driver bin file and flash
@@ -300,10 +347,10 @@ class Artus3DAPI:
         while True:
             num = input("Enter STM number (1-8) to flash or press enter to perform a full flash procedure: ")
             if num == '':
-                self.send("c52p[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n")
+                self._send("c52p[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n")
                 break
             elif int(num) > 0 and int(num) <= 8:
-                self.send("c52p[+"+num+",00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n")
+                self._send("c52p[+"+num+",00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n")
                 break
             print("Invalid input. Please enter a number between 1 and 8 or press enter.")
 
@@ -323,6 +370,7 @@ class Artus3DAPI:
             # print(command_string)
             # replace unnesserary 
             command_string = command_string.replace("\\n", "")
+            command_string = command_string.replace("\n", "")
             command_string = command_string.replace("end", "")
             command_string = command_string.replace("c176", "")
             command_string = command_string.replace("p", "")
@@ -364,3 +412,7 @@ class Artus3DAPI:
             command_string = "c176p"+command_string_position + "v" + command_string_velocity + "end\n"
 
         return command_string
+    
+if __name__ == '__main__':
+    test = Artus3DAPI()
+    test.send_target_command()

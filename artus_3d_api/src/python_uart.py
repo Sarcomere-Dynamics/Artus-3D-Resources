@@ -32,6 +32,7 @@ class PythonEsp32Serial:
         return ""
     
     def flash_serial(self):
+        print("TO BE IMPLEMENTED...")
         # implement later
         return
     

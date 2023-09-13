@@ -20,7 +20,7 @@ class PythonServer:
         self.DISCONNECT_MESSAGE = DISCONNECT_MESSAGE
 
         self.target_ssid = target_ssid
-        
+        ip = None
         # get ip automatically
         # self.server = socket.gethostbyname(socket.gethostname()) # 192.168.4.2
 
@@ -49,7 +49,7 @@ class PythonServer:
         # Port Number
         self.port = port
         # TCP tuple
-        self.esp = (self.server,self.port)
+        self.esp = (ip,self.port)
         self.server_socket = None
         self.conn = None
         self.addr = None
