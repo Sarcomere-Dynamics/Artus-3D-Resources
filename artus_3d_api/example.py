@@ -5,95 +5,62 @@ import sys
 sys.path.append(current_directory)
 from Artus3DAPI import Artus3DAPI
 
-
-def user_input_function():
-
-    print("Enter command to send:\n"
-        "1. start\n"
-        "2. calibrate\n"
-        "3. xsend command\n"
-        "4. save grasp pattern\n"
-        "5. use saved grasps\n"
-        "6. to get robot states\n"
-        "7. to get debug messages\n"
-        "8. to open hand\n"
-        "9. to perform grasp\n"
-        "10. firmware flash\n"
-        "11. retrieve logs\n")
-
-    return input("Enter command to send: ")
-
-def user_input_choose_joint():
-    return input("Enter joint number to control: \n")
-
+def main_menu():
+    return input(
+        '''
+Artus 3D API 1.0
+Command options:
+1. start
+2. calibrate
+3. send command from grasp_patterns/example_command.txt
+4. save grasp pattern to file
+5. use grasp pattern from file
+6. get robot states
+7. ~ reset finger ~
+8. open hand from grasp_patterns/grasp_open.txt
+9. close hand using grasp in grasp_patterns/grasp.txt
+10. firmware flash actuators
+Enter command: 
+'''
+    )
 
 def example():
-
-    hand_robot_api = Artus3DAPI()
-    # hand_robot_api = Artus3DAPI(communication_method="UART", port="COM8") # change port
-
-    time.sleep(2)
-
+    artus3d = Artus3DAPI()
     while True:
-        # for i in range(100):
-        #     debug_message = hand_robot_api.get_debug_message()
-        #     print(debug_message)
-        # for i in range(100):
-        #     debug_message = hand_robot_api.get_robot_states()
-        #     print(debug_message)
-        # continue
-        user_input = user_input_function()
-        if user_input == "1":
-            hand_robot_api.start()
-        elif user_input == "2":
-            hand_robot_api.calibrate()
-        elif user_input == "3":
-            with open(os.join("grasp_patterns","joint_control_command.txt"), "r") as f:
-                command = f.read()
-        #     # send command to robot   
-            if command != "":
-                hand_robot_api.send(command)
-        elif user_input == "4":
-            hand_robot_api.save_grasp_pattern(grasp_pattern = command)
-        elif user_input == "5":
-            grasp_pattern = hand_robot_api.get_grasp_command()
-            #print(grasp_pattern)
-            hand_robot_api.send(grasp_pattern)
-        elif user_input == "6":
-            robot_states_str,robot_states  = hand_robot_api.get_robot_states()
-            print(robot_states)
-        elif user_input == "7":
-            debug_message = hand_robot_api.get_debug_message()
-            print(debug_message)
-            
-        
-        elif user_input == '13':
-            user_input = user_input_choose_joint()
-            user_act = input("choose actuator:\n0:both\n1:act1\n2:act2")
-            hand_robot_api.reset_low(user_input,user_act)
-        
-        elif user_input == "8":
-            with open(os.join("grasp_patterns","grasp_open.txt"), "r") as f:
-                command = f.read()
+        user_input = main_menu()
+        match user_input:
+            case 1:
+                artus3d.start_connection()
+            case 2:
+                artus3d.calibrate()
+            case 3:
+                with open(os.path.join("grasp_patterns","example_command.txt"), "r") as f:
+                    command = f.read()
+                artus3d.send_target_command(command)
+            case 4:
+                artus3d.save_grasp_pattern()
+            case 5:
+                artus3d.get_grasp_pattern()
+            case 6:
+                artus3d.get_robot_states()
+            case 7: 
+                joint = input('choose joint angle 0-16: ')
+                user_act = input("choose actuator:\n0:both\n1:act1\n2:act2")
+                artus3d.locked_reset_low(joint,user_act)
+            case 8:
+                with open(os.path.join("grasp_patterns","grasp_open.txt"), "r") as f:
+                    command = f.read()
                 if command != "":
-                    hand_robot_api.send(command)
-        elif user_input == "9":
-            with open(os.join("grasp_patterns","grasp.txt"), "r") as f:
-                command = f.read()
+                    artus3d.send(command)
+            case 9:
+                with open(os.path.join("grasp_patterns","grasp.txt"), "r") as f:
+                    command = f.read()
                 if command != "":
-                    hand_robot_api.send(command)
-        elif user_input == "10":
-            hand_robot_api.flash_file()
-        elif user_input == "11":
-            hand_robot_api.upload_logs()
-
-    #     # wait for 1 second
-        time.sleep(1)
-
-
+                    artus3d.send(command)
+            case 10:
+                artus3d.flash_file()        
 
 if __name__ == '__main__':
-    # main()
     example()
 
 

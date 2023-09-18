@@ -13,6 +13,7 @@ import os
 import sys
 from src.python_server import PythonServer
 from src.python_uart import PythonEsp32Serial
+from src.Artus3DJoint import Artus3DJoint
 
 
 class Artus3DAPI:
@@ -30,6 +31,7 @@ class Artus3DAPI:
         self.target_cmd = '176'
         self.calibrate_cmd = '55'
         self.start_cmd = '88'
+        self.sleep_cmd = '25'
         self.getstates_cmd = '10'
         self.empty_message = "[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n"
 
@@ -45,37 +47,11 @@ class Artus3DAPI:
             'max':[90,30,90,90,90,15,90,90,15,90,90,15,90,90,15,90],
             'min':[0,-30,0,0,0,-15,0,0,-15,0,0,-15,0,0,-15,0]
         }
-        joint_params = {
-            'position': [0]*16,
-            'velocity': [self.default_velocity]*16
-        }
-        joint_states = {
-            'position': [0]*16,
-            'temperature': [0]*16,
-            'current': [0]*16
-        }
 
-        # create class variables
-        self.constraints = self.joint_params = self.joint_states = None
+        self.joints = {}
 
-        # create array for recursion
-        populate = [self.constraints,self.joint_names,self.joint_params]
-        info = [constraints,joint_params,joint_states]
-
-        # populate array of dictionaries to be set to class variables
-        for j in range(len(info)):
-            # max and min constraints on angles
-            populate[j] = {key:{k:v[i] for k,v in info[j].items()} for i,key in enumerate(self.joint_names)}
-
-        # create dictionaries with the following structure
-        # |
-        # |->    joint_name
-        #           |->     constraint (max,min)
-        #           |->     joint params (position,velocity)
-        #           |->     joint states (position,temperature,current)      
-        self.constraints = populate[0]
-        self.joint_params = populate[1]
-        self.joint_states = populate[2]
+        for i,joint in enumerate(self.joint_names):
+            self.joints[joint] = Artus3DJoint(joint,i,constraints['max'][i],constraints['min'][i])
 
         self.robot_command = self.grasp_pattern = None
         
@@ -86,14 +62,8 @@ class Artus3DAPI:
     '''
     Getters for variables
     '''
-    def get_constraints(self):
-        return self.constraints
-    
-    def get_joint_params(self):
-        return self.joint_params
-    
-    def get_joint_states(self):
-        return self.joint_states
+    def get_joint(self,joint_name):
+        return self.joints[joint_name]
 
     '''
     Start the connection to the Robot Hand and send the Robot Hand a start command
@@ -165,60 +135,34 @@ class Artus3DAPI:
     def send_target_command(self):
         self.command = self.target_cmd
 
-        # look at constraints
-        for key in ['max','min']:
-            self._compare_constraints(self.constraints,self.joint_params,key)
-
-        # change all values to integers
-        for key,inner_dict in self.joint_params.items():
-            for inner_key,inner_value in inner_dict.items():
-                inner_value = int(inner_value)
+        for joint in self.joints:
+            joint.check_input_constraints()
 
         # set the command
         self.robot_command = 'c{0}p[{1}]v[{2}]end\n'.format(
             self.command,
-            ','.join(str(inner_dict['position']) for inner_dict in self.joint_params.values()),
-            ','.join(str(inner_dict['velocity']) for inner_dict in self.joint_params.values())
+            ','.join(str(joint.input_angle) for joint in self.joints),
+            ','.join(str(joint.input_speed) for joint in self.joints)
         )
 
         self._send(self.robot_command)
         return self.joint_params
-    ''' 
-    save grasp pattern from self.robot_command into separate text file
     '''
-    def save_grasp_pattern(self,name=None):
-        if name is None:
-            name = input("Enter Grasp Pattern Name: ")
-        filepath = os.path.join("grasp_patterns",name+'.txt')
-        if not os.path.exists("grasp_patterns"):
-            os.makedirs("grasp_patterns")
-
-        if os.path.isfile(filepath):
-            action = input("Rewrite last file? (y/n)\n")
-            if action == 'y':
-                with open(filepath,'w') as f:
-                    f.write(self.robot_command)
-            else: 
-                print("File not overwritten..")
-
-        return self.robot_command
+    Update states for Robot Hand
+    @param: does not require a full dictionary of new values - only whatever you want to update
     '''
-    Load grasp pattern into self.robot_command from text file
-    '''
-    def get_grasp_pattern(self,name=None):
-        if name is None:
-            name = input("Enter Grasp Pattern Name: ")
-        filepath = os.path.join("grasp_patterns",name+'.txt')
+    def set_robot_params_by_joint_name(self,new_dict:dict):
+        for key in new_dict.keys():
+            if 'angle' in new_dict[key]:
+                self.joints[key].input_angle = new_dict[key]['angle']
+            if 'velocity' in new_dict[key]:
+                self.joints[key].input_speed = new_dict[key]['velocity']
 
-        if not os.path.isfile(filepath):
-            print("File does not exist")
+    def set_robot_params_by_index(self,angles,speeds):
+        for joint in self.joints:
+            joint.input_angle = angles[joint.joint_index]
+            joint.input_speed = speeds[joint.joint_index]
 
-        else:
-            with open(filepath,'r') as f:
-                tmp_cmd = f.read()
-                self.robot_command = tmp_cmd
-
-        return self.robot_command
     '''
     Get states from Robot Hand
     '''
@@ -233,22 +177,18 @@ class Artus3DAPI:
         # if empty Mk5+ compatible
         if "position" in str_return:
             return None,None
-        
-        valid_json_return = str_return.replace("'","\"")
-        states_return = json.loads(valid_json_return)
+        try:
+            valid_json_return = str_return.replace("'","\"")
+            states_return = json.loads(valid_json_return)
 
-        # return to form of self.joint_states
-        new_joint_states = {key: {k:v[i] for k,v in states_return.items()} for i,key in enumerate(self.joint_names)}
+            for joint in self.joints.items():
+                joint.feedback_angle = states_return['p'][joint.joint_index]
+                joint.feedback_current = states_return['c'][joint.joint_index]
+                joint.feedback_temperature = states_return['t'][joint.joint_index]
 
-        # update values in joint states dictionary
-        self.update_joint_states(new_joint_states)
+        except Exception as e:
+            logging.error('Unable to load robot states')
 
-        return self.joint_states
-    '''
-    Update joint states such to be read out by users
-    '''
-    def update_joint_states(self,new_data:dict):
-        self._update_dict(self.joint_states,new_data)
         return self.joint_states
 
     '''
@@ -263,37 +203,6 @@ class Artus3DAPI:
         # send command
         self._send(self.robot_command)
         return self.robot_command
-
-    '''
-    Helper function to compare position to position hard min/max
-    '''
-    def _compare_constraints(self,constraint:dict,data:dict,constraint_key:str):
-        for key,inner_dict in data.items():
-            # replace mins
-            if constraint_key == 'min' and inner_dict['position'] < constraint[key][constraint_key]:
-                inner_dict['position'] = constraint[key][constraint_key]
-            # replace maxs
-            elif constraint_key == 'max' and inner_dict['position'] > constraint[key][constraint_key]:
-                inner_dict['position'] = constraint[key][constraint_key]
-
-        return data
-    '''
-    Update joint angles and velocity values in joint_params with matching keys of a dictionary given as a parameter
-    @param: user joint angle/velocity dictionary with matching naming convention
-    '''
-    def update_joint_params(self,user_joint_dictionary:dict):
-        self._update_dict(self.joint_params,user_joint_dictionary)
-        return self.joint_params
-
-    '''
-    Recursive helper function to update dictionary values with matching keys
-    '''
-    def _update_dict(self,target, source):
-        for key, value in source.items():
-            if isinstance(value, dict) and key in target:
-                self._update_dict(target[key], value)
-            else:
-                target[key] = value
 
     '''
     Send a target command to the Robot Hand
@@ -340,7 +249,14 @@ class Artus3DAPI:
         self._send(self.robot_command)
 
     '''
-    Upload actuator driver bin file and flash
+    Sleep the Robot Hand and save joint positions locally on Robot Hand before powering off to remember state
+    '''
+    def sleep(self):
+        self.robot_command = self.sleep_cmd+self.empty_message
+        self._send(self.robot_command)
+
+    '''
+    flash Actuator Drivers with onboard bin file
     '''
     def flash_file(self): # only WiFi is configured
         
@@ -352,14 +268,49 @@ class Artus3DAPI:
             elif int(num) > 0 and int(num) <= 8:
                 self._send("c52p[+"+num+",00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n")
                 break
-            print("Invalid input. Please enter a number between 1 and 8 or press enter.")
+            logging.warning("Invalid input. Please enter a number between 1 and 8 or press enter.")
 
         if self.communication_method == "WiFi": # wifi
             self.python_server.flash_wifi()
             
         elif self.communication_method == "UART": # uart
             self.python_serial.flash_serial()
+    ''' 
+    save grasp pattern from self.robot_command into separate text file
+    '''
+    def save_grasp_pattern(self,name=None):
+        if name is None:
+            name = input("Enter Grasp Pattern Name: ")
+        filepath = os.path.join("grasp_patterns",name+'.txt')
+        if not os.path.exists("grasp_patterns"):
+            os.makedirs("grasp_patterns")
 
+        if os.path.isfile(filepath):
+            action = input("Rewrite last file? (y/n)\n")
+            if action == 'y':
+                with open(filepath,'w') as f:
+                    f.write(self.robot_command)
+            else: 
+                print("File not overwritten..")
+
+        return self.robot_command
+    '''
+    Load grasp pattern into self.robot_command from text file
+    '''
+    def get_grasp_pattern(self,name=None):
+        if name is None:
+            name = input("Enter Grasp Pattern Name: ")
+        filepath = os.path.join("grasp_patterns",name+'.txt')
+
+        if not os.path.isfile(filepath):
+            print("File does not exist")
+
+        else:
+            with open(filepath,'r') as f:
+                tmp_cmd = f.read()
+                self.robot_command = tmp_cmd
+
+        return self.robot_command
     '''
     Helper function to check and parse the command string and make
         the values readable for the Robot Hand
