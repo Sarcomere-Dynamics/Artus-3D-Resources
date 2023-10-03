@@ -6,6 +6,7 @@ cwd.replace('\\test',"")
 sys.path.append(cwd)
 
 from Artus3DAPI import Artus3DAPI
+from src.Artus3DJoint import Artus3DJoint
 
 
 
@@ -13,22 +14,11 @@ class TestCasesArtus3DAPI(unittest.TestCase):
 
     artus_test_api = Artus3DAPI()
 
-    def test_success(self):
-
-        # check some constraint values
-        output = self.artus_test_api.get_constraints()
-        self.assertEqual(output['thumb_spread']['min'],-30)
-        self.assertNotEqual(output['pinky_d2']['min'],-10)
-
-        # check only updating the values that match params
-        valid = self.artus_test_api.update_joint_params({'pinky_d2':{'velocity':20,'position':100}})
-        self.assertEqual(valid['pinky_d2']['velocity'],20)
-        self.assertEqual(valid['thumb_flex']['position'],0)
-
-        # check compare constraints
-        valid_target = self.artus_test_api.send_target_command()
-        self.assertEqual(valid_target['pinky_d2']['position'],90)
-        print(self.artus_test_api.robot_command)
+    def test_data(self):
+        self.artus_test_api.joints['thumb_spread'].input_angle = 80
+        self.artus_test_api.joints['thumb_spread'].input_speed = 90
+        self.assertNotEqual(self.artus_test_api.send_target_command(),f'c176p[0,80,0,0,0,0,0,0,0,0,0,0,0,0,0,0]v[80,90,80,80,80,80,80,80,80,80,80,80,80,80,80,80]end\n')
+        self.assertEqual(self.artus_test_api.send_target_command(),f'c176p[0,30,0,0,0,0,0,0,0,0,0,0,0,0,0,0]v[80,90,80,80,80,80,80,80,80,80,80,80,80,80,80,80]end\n')
 
 if __name__ == "__main__":
     unittest.main()

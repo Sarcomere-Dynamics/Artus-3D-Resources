@@ -69,6 +69,7 @@ class Artus3DAPI:
     Start the connection to the Robot Hand and send the Robot Hand a start command
     '''
     def start_connection(self):
+
         # start server in either wifi or UART mode
         if self.communication_method == "WiFi":
             try:
@@ -89,6 +90,10 @@ class Artus3DAPI:
                 print(e)
                 pass
 
+    '''
+    Start the connection
+    '''
+    def start_robot(self):
         # send start command to the robot
         # set RTC values
         year = str(time.localtime().tm_year - 2000)
@@ -135,33 +140,40 @@ class Artus3DAPI:
     def send_target_command(self):
         self.command = self.target_cmd
 
-        for joint in self.joints:
+        for joint_name,joint in self.joints.items():
             joint.check_input_constraints()
 
         # set the command
         self.robot_command = 'c{0}p[{1}]v[{2}]end\n'.format(
             self.command,
-            ','.join(str(joint.input_angle) for joint in self.joints),
-            ','.join(str(joint.input_speed) for joint in self.joints)
+            ','.join(str(joint.input_angle) for name,joint in self.joints.items()),
+            ','.join(str(joint.input_speed) for name,joint in self.joints.items())
         )
 
         self._send(self.robot_command)
-        return self.joint_params
+        return self.robot_command
     '''
     Update states for Robot Hand
-    @param: does not require a full dictionary of new values - only whatever you want to update
+    @param: single item
     '''
-    def set_robot_params_by_joint_name(self,new_dict:dict):
-        for key in new_dict.keys():
-            if 'angle' in new_dict[key]:
-                self.joints[key].input_angle = new_dict[key]['angle']
-            if 'velocity' in new_dict[key]:
-                self.joints[key].input_speed = new_dict[key]['velocity']
-
-    def set_robot_params_by_index(self,angles,speeds):
-        for joint in self.joints:
-            joint.input_angle = angles[joint.joint_index]
-            joint.input_speed = speeds[joint.joint_index]
+    def set_robot_params_by_joint_name(self,name:str,input_angle:int,input_speed:int=None):
+        self.joints[name].input_angle = input_angle
+        if input_speed:
+            self.joints[name].input_speed = input_speed
+        return
+    
+    '''
+    Update states for Robot Hand
+    @param: single item
+    '''
+    def set_robot_params_by_joint_name(self,index:int,input_angle:int,input_speed:int=None):
+        for joint_name,joint in self.joints.items():
+            if joint.index == index:
+                self.joint.input_angle = input_angle
+            if input_speed:
+                self.joint.input_speed = input_speed
+            break
+        return
 
     '''
     Get states from Robot Hand
@@ -189,7 +201,7 @@ class Artus3DAPI:
         except Exception as e:
             logging.error('Unable to load robot states')
 
-        return self.joint_states
+        return self.joints
 
     '''
     Reset specified actuator finger back to 0 chosen through parameter

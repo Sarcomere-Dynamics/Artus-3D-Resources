@@ -1,6 +1,6 @@
 
 class Artus3DJoint:
-    def __init__(self,joint_name,joint_index, maximum_angle, minimum_angle):
+    def __init__(self,joint_name=None,joint_index=None, maximum_angle=None, minimum_angle=None):
         self.joint_name = joint_name
         self.joint_index = joint_index
         self.maximum_angle_constraint = maximum_angle
@@ -16,7 +16,12 @@ class Artus3DJoint:
 
     def check_input_constraints(self):
         self.input_angle = int(self.input_angle)
+        self.input_speed = int(self.input_speed)
         if self.input_angle > self.maximum_angle_constraint: 
             self.input_angle = self.maximum_angle_constraint
         elif self.input_angle < self.minimum_angle_constraint:
             self.input_angle = self.minimum_angle_constraint
+        if self.input_speed > self.maximum_speed_constraint:
+            self.input_speed = self.maximum_speed_constraint
+        elif self.input_speed < self.minimum_speed_constraint:
+            self.input_speed = self.minimum_speed_constraint

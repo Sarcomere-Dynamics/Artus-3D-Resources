@@ -6,59 +6,65 @@ sys.path.append(current_directory)
 from Artus3DAPI import Artus3DAPI
 
 def main_menu():
-    return input(
-        '''
+    return input('''
 Artus 3D API 1.0
 Command options:
-1. start
-2. calibrate
-3. send command from grasp_patterns/example_command.txt
-4. save grasp pattern to file
-5. use grasp pattern from file
-6. get robot states
-7. ~ reset finger ~
-8. open hand from grasp_patterns/grasp_open.txt
-9. close hand using grasp in grasp_patterns/grasp.txt
-10. firmware flash actuators
-Enter command: 
-'''
-    )
+1. start connection to hand
+2. start robot
+3. calibrate
+4. send command from grasp_patterns/example_command.txt
+5. save grasp pattern to file
+6. use grasp pattern from file
+7. get robot states
+8. ~ reset finger ~
+9. open hand from grasp_patterns/grasp_open.txt
+10. close hand using grasp in grasp_patterns/grasp.txt
+11. firmware flash actuators
+12. save current hand state for power cycle
+13. close connection
+Enter command: ''')
 
 def example():
     artus3d = Artus3DAPI()
     while True:
         user_input = main_menu()
         match user_input:
-            case 1:
+            case "1":
                 artus3d.start_connection()
-            case 2:
+            case "2":
+                artus3d.start_robot()
+            case "3":
                 artus3d.calibrate()
-            case 3:
+            case "4":
                 with open(os.path.join("grasp_patterns","example_command.txt"), "r") as f:
                     command = f.read()
                 artus3d.send_target_command(command)
-            case 4:
+            case "5":
                 artus3d.save_grasp_pattern()
-            case 5:
+            case "6":
                 artus3d.get_grasp_pattern()
-            case 6:
+            case "7":
                 artus3d.get_robot_states()
-            case 7: 
+            case "8": 
                 joint = input('choose joint angle 0-16: ')
                 user_act = input("choose actuator:\n0:both\n1:act1\n2:act2")
                 artus3d.locked_reset_low(joint,user_act)
-            case 8:
+            case "9":
                 with open(os.path.join("grasp_patterns","grasp_open.txt"), "r") as f:
                     command = f.read()
                 if command != "":
                     artus3d.send(command)
-            case 9:
+            case "10":
                 with open(os.path.join("grasp_patterns","grasp.txt"), "r") as f:
                     command = f.read()
                 if command != "":
                     artus3d.send(command)
-            case 10:
-                artus3d.flash_file()        
+            case "11":
+                artus3d.flash_file() 
+            case "12":
+                artus3d.sleep()
+            case "13":
+                artus3d.close_connection()       
 
 if __name__ == '__main__':
     example()

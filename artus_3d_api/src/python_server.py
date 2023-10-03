@@ -3,6 +3,7 @@ import time
 import os
 import subprocess
 import platform
+import psutil
 
 class PythonServer:
 
@@ -23,55 +24,105 @@ class PythonServer:
         ip = None
         # get ip automatically
         # self.server = socket.gethostbyname(socket.gethostname()) # 192.168.4.2
-
-        # get ip for specific ssid value
-        # windows
-        if platform.system() == "Windows":
-            try:
-                output = subprocess.check_output(['netsh','interface','show','interface'],universal_newlines=True)
-                for line in output.splitlines():
-                    if self.target_ssid in line:
-                        interface = line.split()[0]
-                        ip = socket.gethostbyname(socket.gethostbyname)
-                        self.ip = ip
-            except subprocess.CalledProcessError:
-                pass
-        elif platform.system == "Linux":
-            try:
-                output = subprocess.check_output(['iwgetid'], universal_newlines=True)
-                if self.target_ssid in output:
-                    ip = socket.gethostbyname(socket.gethostname())
-                    self.ip = ip
-            except subprocess.CalledProcessError:
-                pass
         
+        # get IP addresses associated with local machine
+        source_ip = self._get_available_ip()
 
         # Port Number
         self.port = port
         # TCP tuple
-        self.esp = (ip,self.port)
+        self.esp = (source_ip,self.port)
         self.server_socket = None
         self.conn = None
         self.addr = None
 
         self.msg = ""
 
+    def _get_available_ip(self):
+        gateway_ip = None
+        
+        # Get all network interfaces
+        interfaces = psutil.net_if_addrs()
+
+        for interface,addresses in interfaces.items():
+            for address in addresses:
+                if address.family == socket.AF_INET:
+                    if "192.168" in address.address:
+                        try:
+                            return address.address
+                        except KeyError:
+                            print(f"Error no gateway infomration available")
+
+        return None
+
     """ Start server and listen for connections """
     def start(self):
+        # look for wifi
+        # self._find_ssid()
+
         # create server socket
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.settimeout(30)
+        self.server_socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);
         self.server_socket.bind(self.esp)
 
         # listen for connections
         self.server_socket.listen()
-        print(f"[LISTENING] Server is listening on  {self.server}:{self.port}")
+        print(f"[LISTENING] Server is listening on  {self.server_socket}:{self.port}")
         # Accept the connection
-        self.conn, self.addr = self.server_socket.accept()
-        print(f"[NEW CONNECTION] {self.addr} connected.")
+        try:
+            self.conn, self.addr = self.server_socket.accept()
+            print(f"[NEW CONNECTION] {self.addr} connected.")
+        except TimeoutError as e:
+            print(f"Timeout Error - unable to connect")
         time.sleep(1)
+
+    def _find_ssid(self):
+        sys = platform.system()
+
+        if sys == "Windows":
+            # Windows uses the "netsh" command to connect to Wi-Fi networks
+            connect_command = f'netsh wlan connect name="{self.target_ssid}"'
+            password = input('type ssid password:')
+            if password:
+                connect_command += f' keyMaterial="{password}"'
+            subprocess.run(connect_command, shell=True)
+
+        elif sys == "Linux":
+            # Linux uses the "nmcli" command to connect to Wi-Fi networks
+            connect_command = f'nmcli dev wifi connect "{self.target_ssid}"'
+            password = input('type ssid password:')
+            if password:
+                connect_command += f' password "{password}"'
+            subprocess.run(connect_command, shell=True)
+        
+        else:
+            print(f"platform not found")
+
+        # wait 5 seconds to connect
+        time.sleep(10)
+
 
     def close(self):
         self.server_socket.close()
+        system = platform.system()
+
+        if system == "Windows":
+            # Windows uses the "netsh" command to disconnect from Wi-Fi networks
+            disconnect_command = f'netsh wlan disconnect interface="Wi-Fi" ssid="{self.target_ssid}"'
+            subprocess.run(disconnect_command, shell=True)
+
+        elif system == "Linux":
+            # Linux uses the "nmcli" command to disconnect from Wi-Fi networks
+            disconnect_command = f'nmcli dev disconnect iface "wlp2s0" ssid "{self.target_ssid}"'
+            subprocess.run(disconnect_command, shell=True)
+
+        else:
+            print("Unsupported operating system")
+            return
+
+        print(f"Disconnecting from SSID '{self.target_ssid}'...")
+        time.sleep(2)  # Wait for a few seconds for the disconnect to take effect
         return 
     
     def receive(self):
