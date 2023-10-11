@@ -156,8 +156,9 @@ class Artus3DAPI:
     Update states for Robot Hand
     @param: single item
     '''
-    def set_robot_params_by_joint_name(self,name:str,input_angle:int,input_speed:int=None):
-        self.joints[name].input_angle = input_angle
+    def set_robot_params_by_joint_name(self,name:str,input_angle:int=None,input_speed:int=None):
+        if input_angle:
+            self.joints[name].input_angle = input_angle
         if input_speed:
             self.joints[name].input_speed = input_speed
         return
@@ -193,7 +194,7 @@ class Artus3DAPI:
             valid_json_return = str_return.replace("'","\"")
             states_return = json.loads(valid_json_return)
 
-            for joint in self.joints.items():
+            for name,joint in self.joints.items():
                 joint.feedback_angle = states_return['p'][joint.joint_index]
                 joint.feedback_current = states_return['c'][joint.joint_index]
                 joint.feedback_temperature = states_return['t'][joint.joint_index]
@@ -375,7 +376,3 @@ class Artus3DAPI:
             command_string = "c176p"+command_string_position + "v" + command_string_velocity + "end\n"
 
         return command_string
-    
-if __name__ == '__main__':
-    test = Artus3DAPI()
-    test.send_target_command()

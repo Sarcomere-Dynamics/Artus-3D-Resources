@@ -19,19 +19,17 @@ class PythonServer:
         self.HEADER = HEADER
         self.FORMAT = FORMAT
         self.DISCONNECT_MESSAGE = DISCONNECT_MESSAGE
+        self.password = None
 
         self.target_ssid = target_ssid
         ip = None
         # get ip automatically
         # self.server = socket.gethostbyname(socket.gethostname()) # 192.168.4.2
-        
-        # get IP addresses associated with local machine
-        source_ip = self._get_available_ip()
+    
 
         # Port Number
         self.port = port
-        # TCP tuple
-        self.esp = (source_ip,self.port)
+
         self.server_socket = None
         self.conn = None
         self.addr = None
@@ -58,12 +56,17 @@ class PythonServer:
     """ Start server and listen for connections """
     def start(self):
         # look for wifi
-        # self._find_ssid()
+        self._find_ssid()
+
+        # get IP addresses associated with local machine
+        source_ip = self._get_available_ip()
+        # TCP tuple
+        self.esp = (source_ip,self.port)
 
         # create server socket
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.settimeout(30)
-        self.server_socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);
+        self.server_socket.settimeout(10)
+        self.server_socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
         self.server_socket.bind(self.esp)
 
         # listen for connections
@@ -83,24 +86,29 @@ class PythonServer:
         if sys == "Windows":
             # Windows uses the "netsh" command to connect to Wi-Fi networks
             connect_command = f'netsh wlan connect name="{self.target_ssid}"'
-            password = input('type ssid password:')
-            if password:
-                connect_command += f' keyMaterial="{password}"'
+            if not self.password:
+                self.password = input('type ssid password:')
+            if self.password:
+                connect_command += f' keyMaterial="{self.password}"'
             subprocess.run(connect_command, shell=True)
 
         elif sys == "Linux":
             # Linux uses the "nmcli" command to connect to Wi-Fi networks
             connect_command = f'nmcli dev wifi connect "{self.target_ssid}"'
-            password = input('type ssid password:')
-            if password:
-                connect_command += f' password "{password}"'
+            if not self.password:
+                self.password = input('type ssid password:')
+            if self.password:
+                connect_command += f' password "{self.password}"'
             subprocess.run(connect_command, shell=True)
         
         else:
             print(f"platform not found")
 
-        # wait 5 seconds to connect
-        time.sleep(10)
+        # wait X seconds to connect
+        for i in range(10):
+            time.sleep(1)
+            print(".",end="")
+        print("")
 
 
     def close(self):

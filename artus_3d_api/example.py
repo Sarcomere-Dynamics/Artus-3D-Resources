@@ -7,7 +7,7 @@ from Artus3DAPI import Artus3DAPI
 
 def main_menu():
     return input('''
-Artus 3D API 1.0
+Artus 3D API v1.0.0
 Command options:
 1. start connection to hand
 2. start robot
@@ -38,7 +38,7 @@ def example():
             case "4":
                 with open(os.path.join("grasp_patterns","example_command.txt"), "r") as f:
                     command = f.read()
-                artus3d.send_target_command(command)
+                artus3d.send_target_command()
             case "5":
                 artus3d.save_grasp_pattern()
             case "6":
@@ -53,12 +53,14 @@ def example():
                 with open(os.path.join("grasp_patterns","grasp_open.txt"), "r") as f:
                     command = f.read()
                 if command != "":
-                    artus3d.send(command)
+                    artus3d.robot_command = command
+                    artus3d.send_target_command()
             case "10":
                 with open(os.path.join("grasp_patterns","grasp.txt"), "r") as f:
                     command = f.read()
                 if command != "":
-                    artus3d.send(command)
+                    artus3d.robot_command = command
+                    artus3d.send_target_command()
             case "11":
                 artus3d.flash_file() 
             case "12":
