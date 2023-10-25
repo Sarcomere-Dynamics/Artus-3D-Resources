@@ -4,6 +4,7 @@ import os
 import subprocess
 import platform
 import psutil
+import logging
 
 class PythonServer:
 
@@ -45,7 +46,7 @@ class PythonServer:
         for interface,addresses in interfaces.items():
             for address in addresses:
                 if address.family == socket.AF_INET:
-                    if "192.168" in address.address:
+                    if "192.168.4" in address.address:
                         try:
                             return address.address
                         except KeyError:
@@ -84,13 +85,23 @@ class PythonServer:
         sys = platform.system()
 
         if sys == "Windows":
-            # Windows uses the "netsh" command to connect to Wi-Fi networks
-            connect_command = f'netsh wlan connect name="{self.target_ssid}"'
-            if not self.password:
-                self.password = input('type ssid password:')
-            if self.password:
-                connect_command += f' keyMaterial="{self.password}"'
-            subprocess.run(connect_command, shell=True)
+            # set profile location
+            self.wifi_profile = os.getcwd()+self.target_ssid+".xml"
+
+            # prompt user if first time
+            if not os.path.isfile(os.getcwd()+'\\Wi-Fi-'+self.target_ssid+'.xml'):
+                input("First time Connection, Please connect to Artus3D Hand and enter Y when done")
+                time.sleep(1)
+                save_profile_cmd = f'netsh wlan export profile {self.target_ssid} key=clear folder={os.getcwd()}'
+                subprocess.run(save_profile_cmd,shell=True)
+                time.sleep(1)
+                if not os.path.isfile(os.getcwd()+'\\Wi-Fi-'+self.target_ssid+'.xml'):
+                    logging.error('no wifi profile created')
+
+            else:
+                # connect to profile 
+                connect_command = f'netsh wlan connect ssid={self.target_ssid} name={self.target_ssid} interface=Wi-Fi'
+                subprocess.run(connect_command, shell=True)
 
         elif sys == "Linux":
             # Linux uses the "nmcli" command to connect to Wi-Fi networks
