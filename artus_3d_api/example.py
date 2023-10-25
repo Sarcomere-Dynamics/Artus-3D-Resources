@@ -25,7 +25,7 @@ Command options:
 Enter command: ''')
 
 def example():
-    artus3d = Artus3DAPI()
+    artus3d = Artus3DAPI(target_ssid='Artus3DTesterLHWHITE')
     while True:
         user_input = main_menu()
         match user_input:

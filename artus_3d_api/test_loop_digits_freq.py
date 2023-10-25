@@ -19,7 +19,8 @@ mon_cherche = '_flex'
 # mon_nom = 'pinky_d2'
 # mon_cherche = '_d'
 
-max_ = 45
+max_ = 70
+step_ = 5
 
 
 # start robot
@@ -29,18 +30,21 @@ artus3d.start_robot()
 counter = 0
 while True:
     # counter control
-    if counter%40 == 0:
+    if counter%10 == 0:
         counter+=1
         x = input('Ready to begin? (y/n)')
         if 'n' == x:
+            for joint_name,values in artus3d.joints.items():
+                values.input_angle = 0
+            artus3d.send_target_command()
             artus3d.close_connection()
             quit()
     # increment counter
     if artus3d.joints[mon_nom].input_angle == 0:
-        time.sleep(1)
+        time.sleep(0.5)
         counter+=1
-    elif artus3d.joints[mon_nom].input_angle == max_:
-        time.sleep(1)
+    elif artus3d.joints[mon_nom].input_angle >= max_:
+        time.sleep(0.5)
 
     # direction switch
     if artus3d.joints[mon_nom].input_angle <= 0:
@@ -54,12 +58,12 @@ while True:
             if joint_name == 'thumb_flex':
                 continue
             elif mon_cherche in joint_name:
-                values.input_angle+=5
+                values.input_angle+=step_
     else:
         for joint_name,values in artus3d.joints.items():
             if joint_name == 'thumb_flex':
                 continue
             elif mon_cherche in joint_name:
-                values.input_angle-=5
+                values.input_angle-=step_
     artus3d.send_target_command()
-    time.sleep(0.1)
+    time.sleep(0.055)
