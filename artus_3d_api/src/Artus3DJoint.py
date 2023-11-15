@@ -7,7 +7,7 @@ class Artus3DJoint:
         self.maximum_angle_constraint = maximum_angle
         self.minimum_angle_constraint = minimum_angle
         self.maximum_speed_constraint = 100
-        self.minimum_speed_constraint = 50
+        self.minimum_speed_constraint = 60
 
         self.input_angle = 0
         self.input_speed = 80

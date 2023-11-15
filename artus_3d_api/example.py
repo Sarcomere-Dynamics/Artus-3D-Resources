@@ -3,7 +3,7 @@ import os
 current_directory = os.getcwd()
 import sys
 sys.path.append(current_directory)
-from Artus3DAPI import Artus3DAPI
+from Artus3DAPI import Artus3DAPI,UART,WIFI
 
 def main_menu():
     return input('''
@@ -24,8 +24,13 @@ Command options:
 13. close connection
 Enter command: ''')
 
+LHB = 'Artus3DTesterLHBLACK'
+LHW = 'Artus3DTesterLHWHITE'
+LHW = 'Artus3DTesterLHWHITE'
+RHW = 'Artus3DTesterRHWHITE'
+
 def example():
-    artus3d = Artus3DAPI(target_ssid='Artus3DTesterLHWHITE')
+    artus3d = Artus3DAPI(target_ssid=LHB,port='/dev/ttyUSB0',communication_method=UART)
     while True:
         user_input = main_menu()
         match user_input:
@@ -38,7 +43,8 @@ def example():
             case "4":
                 with open(os.path.join("grasp_patterns","example_command.txt"), "r") as f:
                     command = f.read()
-                artus3d.send_target_command()
+                if command != "":
+                    artus3d.send_target_command(command)
             case "5":
                 artus3d.save_grasp_pattern()
             case "6":
@@ -53,8 +59,7 @@ def example():
                 with open(os.path.join("grasp_patterns","grasp_open.txt"), "r") as f:
                     command = f.read()
                 if command != "":
-                    artus3d.robot_command = command
-                    artus3d.send_target_command()
+                    artus3d.send_target_command(command)
             case "10":
                 with open(os.path.join("grasp_patterns","grasp.txt"), "r") as f:
                     command = f.read()

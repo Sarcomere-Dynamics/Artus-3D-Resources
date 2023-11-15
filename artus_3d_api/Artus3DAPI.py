@@ -15,32 +15,38 @@ from src.python_server import PythonServer
 from src.python_uart import PythonEsp32Serial
 from src.Artus3DJoint import Artus3DJoint
 
+# Constants
+WIFI = 'WiFi'
+UART = 'UART'
+
 
 class Artus3DAPI:
     def __init__(self,
                  communication_method = 'WiFi',
                  port='COM9',
-                 target_ssid = 'Artus3DTester'
+                 target_ssid = 'Artus3DTester',
+                 hand = 'right'
                  ):
         
         self.target_ssid = target_ssid
         self.communication_method = communication_method
         self.port = port
+        self.hand = hand
 
         # command codes
         self.target_cmd = '176'
-        self.calibrate_cmd = '55'
-        self.start_cmd = '88'
-        self.sleep_cmd = '25'
-        self.getstates_cmd = '10'
+        self.calibrate_cmd = '055'
+        self.start_cmd = '088'
+        self.sleep_cmd = '025'
+        self.getstates_cmd = '010'
         self.empty_message = "[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n"
 
         # placeholders for values
         self.command = 0
         self.default_velocity = 90
         self.joint_names = ['thumb_flex','thumb_spread','thumb_d2','thumb_d1','index_flex','index_spread','index_d2',
-                            'middle_flex','middle_spread','middle_d2','ring_flex','ring_spread','ring_d2','pinky_flex',
-                            'pinky_spread','pinky_d2']
+                        'middle_flex','middle_spread','middle_d2','ring_flex','ring_spread','ring_d2','pinky_flex',
+                        'pinky_spread','pinky_d2']
         
         # temporary dictionaries for constraints, joint parameters to be set and joint states to be read
         constraints = {
@@ -114,7 +120,7 @@ class Artus3DAPI:
         if int(second) < 10:
             second = '0'+ second
 
-        self.robot_command = "c88p[20,+"+year+",+"+month+",+"+day+",+"+hour+",+"+minute+",+"+second+",00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n"
+        self.robot_command = "c088p[20,"+year+","+month+","+day+","+hour+","+minute+","+second+",00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n"
         
         # send command
         self._send(self.robot_command)
@@ -137,7 +143,10 @@ class Artus3DAPI:
     '''
     Send a target command
     '''
-    def send_target_command(self):
+    def send_target_command(self,cmd=None):
+        if cmd:
+            self._send(cmd)
+            return None
         self.command = self.target_cmd
 
         for joint_name,joint in self.joints.items():
@@ -181,12 +190,13 @@ class Artus3DAPI:
     '''
     def get_robot_states(self):
 
-        self._send("c10p"+self.empty_message)
+        self._send("c010p"+self.empty_message)
 
         str_return = ''
         while str_return == '':
             str_return = self._receive()
 
+        print(str_return)
         # if empty Mk5+ compatible
         if "position" in str_return:
             return None,None
@@ -212,7 +222,7 @@ class Artus3DAPI:
     def locked_reset_low(self,joint:str,act:str):
         if int(joint) < 10:
             joint = '0'+joint
-        self.robot_command = "c12p["+joint+",0"+act+",00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n"
+        self.robot_command = "c012p["+joint+",0"+act+",00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n"
         # send command
         self._send(self.robot_command)
         return self.robot_command
@@ -223,12 +233,14 @@ class Artus3DAPI:
     def _send(self, message):
         try:
             # Send Command to Robot based on communication method
+            message = self._check_command_string(message)
             if self.communication_method == "WiFi": # wifi
-                message = self._check_command_string(message)
+                # message = self._check_command_string(message)
                 print(message)
                 # return
                 self.python_server.send(message)
             elif self.communication_method == "UART": # uart
+                print(message)
                 self.python_serial.send(message)
         except Exception as e:
             logging.warning("unable to send command")
@@ -251,21 +263,20 @@ class Artus3DAPI:
         except Exception as e:
             logging.warning("unable to receive message")
             print(e)
-
         return message
 
     '''
     Calibrate Robot Hand
     '''
     def calibrate(self):
-        self.robot_command = self.calibrate_cmd+self.empty_message
+        self.robot_command = 'c'+self.calibrate_cmd+'p'+self.empty_message
         self._send(self.robot_command)
 
     '''
     Sleep the Robot Hand and save joint positions locally on Robot Hand before powering off to remember state
     '''
     def sleep(self):
-        self.robot_command = self.sleep_cmd+self.empty_message
+        self.robot_command = 'c'+self.sleep_cmd+'p'+self.empty_message
         self._send(self.robot_command)
 
     '''
@@ -276,10 +287,10 @@ class Artus3DAPI:
         while True:
             num = input("Enter STM number (1-8) to flash or press enter to perform a full flash procedure: ")
             if num == '':
-                self._send("c52p[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n")
+                self._send("c052p[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n")
                 break
             elif int(num) > 0 and int(num) <= 8:
-                self._send("c52p[+"+num+",00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n")
+                self._send("c052p[0"+num+",00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]v[00,00,00,00,00,00,00,00,00,00,00,00,00,00,00,00]end\n")
                 break
             logging.warning("Invalid input. Please enter a number between 1 and 8 or press enter.")
 
@@ -328,51 +339,56 @@ class Artus3DAPI:
     Helper function to check and parse the command string and make
         the values readable for the Robot Hand
     '''
-    def _check_command_string(self, command_string):
+    def _check_command_string(self, command_string:str):
 
-        if "c176" in command_string:
-            # print(command_string)
+        # if "c176" in command_string:
             # replace unnesserary 
-            command_string = command_string.replace("\\n", "")
-            command_string = command_string.replace("\n", "")
-            command_string = command_string.replace("end", "")
-            command_string = command_string.replace("c176", "")
-            command_string = command_string.replace("p", "")
-            command_string = command_string.replace("[", "")
-            command_string = command_string.replace("]", "")
+        command_string = command_string.replace("\\n", "")
+        command_string = command_string.replace("\n", "")
+        command_string = command_string.replace("end", "")
+        # command_string = command_string.replace("c176", "")
+        last = command_string.find('p')
+        first = command_string.find('c')
+        command = command_string[first+1:last]
+        # print(command)
+        command_string = command_string.replace(command,"")
+        command_string = command_string.replace("c", "")
+        command_string = command_string.replace("p", "")
+        command_string = command_string.replace("[", "")
+        command_string = command_string.replace("]", "")
 
-            #debugging
-            # print(command_string)
+        #debugging
+        # print(command_string)
 
-            # seperate the two lists of joint angles and joint velocities
-            command_string_position, command_string_velocity = command_string.split("v")
-            # convert to list
-            command_string_position = command_string_position.split(",")
-            command_string_velocity = command_string_velocity.split(",")
+        # seperate the two lists of joint angles and joint velocities
+        command_string_position, command_string_velocity = command_string.split("v")
+        # convert to list
+        command_string_position = command_string_position.split(",")
+        command_string_velocity = command_string_velocity.split(",")
 
-            # debugging
-            # print(command_string_velocity)
+        # debugging
+        # print(command_string_velocity)
 
-            # check the len of each element in the list
-            for i in range(len(command_string_position)):
-                if len(command_string_position[i]) == 1:
-                    command_string_position[i] = "+0" + command_string_position[i]
-                elif len(command_string_position[i]) == 2 and command_string_position[i][0] != "-":
-                    command_string_position[i] = "+" + command_string_position[i]
-                elif len(command_string_position[i]) == 2:
-                    command_string_position[i] = "-0" + command_string_position[i][1:]
+        # check the len of each element in the list
+        for i in range(len(command_string_position)):
+            if len(command_string_position[i]) == 1:
+                command_string_position[i] = "+0" + command_string_position[i]
+            elif len(command_string_position[i]) == 2 and command_string_position[i][0] != "-":
+                command_string_position[i] = "+" + command_string_position[i]
+            elif len(command_string_position[i]) == 2:
+                command_string_position[i] = "-0" + command_string_position[i][1:]
 
-            for i in range(len(command_string_velocity)):
-                if len(command_string_velocity[i]) == 1:
-                    command_string_velocity[i] = "00" + command_string_velocity[i]
-                elif len(command_string_velocity[i]) == 2:
-                    command_string_velocity[i] = "0" + command_string_velocity[i]
+        for i in range(len(command_string_velocity)):
+            if len(command_string_velocity[i]) == 1:
+                command_string_velocity[i] = "+0" + command_string_velocity[i]
+            elif len(command_string_velocity[i]) == 2:
+                command_string_velocity[i] = "+" + command_string_velocity[i]
 
-            # convert back to original format
-            command_string_position = "[" + ",".join(command_string_position) + "]"
-            command_string_velocity = "[" + ",".join(command_string_velocity) + "]"
+        # convert back to original format
+        command_string_position = "[" + ",".join(command_string_position) + "]"
+        command_string_velocity = "[" + ",".join(command_string_velocity) + "]"
 
-            # combine the two lists
-            command_string = "c176p"+command_string_position + "v" + command_string_velocity + "end\n"
+        # combine the two lists
+        command_string = "c"+command+"p"+command_string_position + "v" + command_string_velocity + "end\n"
 
         return command_string

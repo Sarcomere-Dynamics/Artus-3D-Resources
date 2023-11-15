@@ -5,7 +5,7 @@ class PythonEsp32Serial:
 
     def __init__(self, port='COM9',
                  baudrate=115200, #115200, 
-                 timeout=0.5):
+                 timeout=1):
         
         # automatically connect to the first available port
         self.port = port
@@ -19,14 +19,14 @@ class PythonEsp32Serial:
         self.esp32.close()
         self.esp32.open()
 
-    def send(self, data):
-        self.esp32.write(data.encode())
-        #print(data.encode())
+    def send(self, data:str):
+        self.esp32.write(data.encode('utf-8'))
+        # print(len(data.encode('utf-8')))
 
     def receive(self):
         ## check if something is available to read
         if self.esp32.in_waiting > 100: # receive the message and decode it to utf-8
-            data = self.esp32.readline().decode()
+            data = self.esp32.readline().decode("ISO-8859-1")
             #print(data)
             return str(data)
         return ""
