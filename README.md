@@ -5,9 +5,18 @@ This repository contains the Python API for controlling the Artus 3D Robotic Han
 ## Table of Contents
 * [Requirements](#requirements--install)
 * [API Core](#api-core)
+    * [Parameters](#parameters)
+    * [Class Methods](#class-methods)
 * [Joint Class](#joint-class)
+    * [Parameters](#parameters-1)
+    * [Class Variables](#class-variables)
+    * [Class Methods](#class-methods-1)
+    * [A note about joint limits](#a-note-about-joint-limits)
 * [Running example.py](#running-examplepy)
 * [Implementation Examples](#implementation-examples)
+    * [Setting input values](#setting-input-values)
+    * [Getting feedback values](#getting-feedback-values)
+    * [Controlling multiple hands](#controlling-multiple-hands)
 * [Teleoperation Considerations](#teleoperation-considerations)
 * [Firmware Updates](#firmware-updates)
 * [Revisions](#revisions)
@@ -20,26 +29,25 @@ To install the pip libraries, please run the following commands:\
 `pip install -r requirements.txt`
 
 ## API Core
-
 ```python
 class Artus3DAPI()
 ```
 
-**Parameters**:
+### Parameters:
 - **communication_method**: UART or WiFi.
 - **port**: COM port for UART
 - **target_ssid**: default will be set when shipped but replace with whatever your Artus 3D hand WiFi network name is. Only necessary for WiFi
 
 Note that there should only be one single machine running one instance of the API to control 1-2 hands.
 
-**Class Methods**
-- **`start_connection`**: start the connection to the Robot Hand over WiFi or UART as specified
-- **`start_robot`**: send a start command to the Robot Hand over WiFi or UART as specified
-- **`close_connection`**: close the connection to the Robot Hand over WiFi or UART as specified
+### Class Methods:
+- **`start_connection`**: start the connection to the Artus 3D over WiFi or UART as specified
+- **`start_robot`**: send a start command to the Artus 3D over WiFi or UART as specified
+- **`close_connection`**: close the connection to the Artus 3D over WiFi or UART as specified
 - **`send_target_command`**: sends a targetting command based on the `input` data fields in the joint dictionary
-- **`get_robot_states`**: send a message to the Robot Hand to receive joint data and populates `feedback` data fields in joints
-- **`calibrate`**: send a calibrate command to the Robot Hand over WiFi or UART as specified
-- **`sleep`**: send a sleep command to the Robot Hand over WiFi or UART as specified that saves the current positions of the hand to non-volatile memory in preparation for power cycling
+- **`get_robot_states`**: send a message to the Artus 3D to receive joint data and populates `feedback` data fields in joints
+- **`calibrate`**: send a calibrate command to the Artus 3D over WiFi or UART as specified
+- **`sleep`**: send a sleep command to the Artus 3D over WiFi or UART as specified that saves the current positions of the hand to non-volatile memory in preparation for power cycling
 - **`save_grasp_pattern`**: save a grasp pattern in robot_command to a text file in grasp_patterns folder
 - **`get_grasp_pattern`**: get a grasp patptern from a text file in grasp_patterns folder
 
@@ -47,25 +55,29 @@ Note that there should only be one single machine running one instance of the AP
 ```python
 class Artus3DJoint()
 ```
-**Parameters**:
+### Parameters:
 - **`joint_name`**: name of the joint
 - **`maximum_angle_constraint` and `minimum_angle_constraint`**: angle constraints
 - **`maximum_speed_constraint` and `minimum_speed_constraint`**: speed constraints
 
-**Class Variables**:
+### Class Variables:
 - **`input_speed`**: input speed for next target
 - **`input_angle`**: input angle for next target
 - **`feedback_angle`**: reported angle
 - **`feedback_temperature`**: reported temperature of actuator associated with the joint
 - **`feedback_current`**: reported current of actuator associated with joint
 
-**Class Methods**
-- **`check_input_constraints`**: called automatically in `send_target_command`, this ensures that values written to the Robot Hand are in the format expected
+### Class Methods:
+- **`check_input_constraints`**: called automatically in `send_target_command`, this ensures that values written to the Artus 3D are in the format expected
 
 ![Hand Joint Array Image Map](/public/Hand_Joint_Map.png)
 
+### A note about joint limits:
+* All D2, D1 and flex joints have a range of 0-90 degrees
+* Thumb spread is between -30 and 30, while the rest of the spreads are -15 to 15. 
+
 ## Running example.py
-Before running the example script, determine whether your Robot Hand is running WiFi or UART, and edit the following line with the name of the target SSID for WiFi and port over UART
+Before running the example script, determine whether your Artus 3D is running WiFi or UART, and edit the following line with the name of the target SSID for WiFi and port over UART
 ```python
 artus3d = Artus3DAPI(target_ssid='Artus3DLH',port='/dev/ttyUSB0',communication_method='Wifi')
 ```
@@ -100,13 +112,13 @@ To edit the command there are a few things that need to be accounted for:
 
 ## Implementation Examples
 Below are some examples of how you can implement these functions in your code that are not covered by the `example.py` script.\
-**Setting input values**:\
+### Setting input values:\
 *Name accessible :*
 ```python
 artus3d.joints['thumb_flex'].input_angle = 45
 ```
 *Through a Loop :*\
-In this example, the assumption is you have an array of angles that are already mapped to the indices of the robot hand
+In this example, the assumption is you have an array of angles that are already mapped to the indices of the Artus 3D
 ```python
 # input angles come from your control code, have 16 elements of type int or float and are mapped to our hand joint map
 input_angles_from_control = []
@@ -115,14 +127,14 @@ for joint,joint_info in artus3d.joints.items():
     joint_info.input_angle = input_angles_from_control[joint_info.index]
 ```
 
-**Getting feedback values**:\
+### Getting feedback values:\
 In the same way as setting input values, we can access feedback data after calling `artus3d.get_robot_states()` by name.\
 *Name accessible :*
 ```python
 artus3d.joints['thumb_flex'].feedback_angle
 ```
 
-**Controlling multiple hands**:\
+### Controlling multiple hands:\
 We can define two instances of hands with different `port` and `target_ssid`. In theory, it can spin up an unlimited amount of hands, bottlenecked by the amount of wifi controllers and COM ports associated with the machine. e.g.
 ```python
 artus3dLeft = Artus3DAPI(target_ssid='Artus3DLH',port='/dev/ttyUSB0',communication_method='UART')
