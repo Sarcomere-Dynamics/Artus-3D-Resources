@@ -102,7 +102,7 @@ Enter command:
 ```
 The first thing to do is to start the connection to the hand by pressing "1". Next, you want to send the start robot command "2". Next to send a command, you can edit the `example_command.txt` file in the artus_3d_api/grasp_patterns folder. 
 
-*To Note when editing the grasps files:*\
+*To note when editing the grasps files:*\
 `c176p[+00,+00,+00,+00,+00,+00,+00,+00,+00,+00,+00,+00,+00,+00,+00,+00]v[+90,+90,+90,+90,+90,+90,+90,+90,+90,+90,+90,+90,+90,+90,+90,+90]end`\
 To edit the command there are a few things that need to be accounted for:
 * each element in the array has 3 characters and must follow this convention
@@ -111,8 +111,8 @@ To edit the command there are a few things that need to be accounted for:
     * if this command convention is not followed, the hand may act unpredictably
 
 ## Implementation Examples
-Below are some examples of how you can implement these functions in your code that are not covered by the `example.py` script.\
-### Setting input values:\
+Below are some examples of how you can implement these functions in your code that are not covered by the `example.py` script.
+### Setting input values:
 *Name accessible :*
 ```python
 artus3d.joints['thumb_flex'].input_angle = 45
@@ -127,14 +127,14 @@ for joint,joint_info in artus3d.joints.items():
     joint_info.input_angle = input_angles_from_control[joint_info.index]
 ```
 
-### Getting feedback values:\
+### Getting feedback values:
 In the same way as setting input values, we can access feedback data after calling `artus3d.get_robot_states()` by name.\
 *Name accessible :*
 ```python
 artus3d.joints['thumb_flex'].feedback_angle
 ```
 
-### Controlling multiple hands:\
+### Controlling multiple hands:
 We can define two instances of hands with different `port` and `target_ssid`. In theory, it can spin up an unlimited amount of hands, bottlenecked by the amount of wifi controllers and COM ports associated with the machine. e.g.
 ```python
 artus3dLeft = Artus3DAPI(target_ssid='Artus3DLH',port='/dev/ttyUSB0',communication_method='UART')
