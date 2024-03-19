@@ -20,14 +20,14 @@ class Artus3DJoint:
         self.input_speed = int(self.input_speed)
         if self.input_angle > self.maximum_angle_constraint: 
             self.input_angle = self.maximum_angle_constraint
-            logging.info(f"{self.joint_name} input angle exceeds max limit - changed to {self.maximum_angle_constraint}")
+            # logging.info(f"{self.joint_name} input angle exceeds max limit - changed to {self.maximum_angle_constraint}")
         elif self.input_angle < self.minimum_angle_constraint:
             self.input_angle = self.minimum_angle_constraint
-            logging.info(f"{self.joint_name} input angle exceeds min limit - changed to {self.minimum_angle_constraint}")
+            # logging.info(f"{self.joint_name} input angle exceeds min limit - changed to {self.minimum_angle_constraint}")
 
         if self.input_speed > self.maximum_speed_constraint:
             self.input_speed = self.maximum_speed_constraint
-            logging.info(f"{self.joint_name} input speed exceeds max limit - changed to {self.maximum_speed_constraint}")
+            # logging.info(f"{self.joint_name} input speed exceeds max limit - changed to {self.maximum_speed_constraint}")
         elif self.input_speed < self.minimum_speed_constraint:
             self.input_speed = self.minimum_speed_constraint
-            logging.info(f"{self.joint_name} input speed exceeds min limit - changed to {self.minimum_speed_constraint}")
+            # logging.info(f"{self.joint_name} input speed exceeds min limit - changed to {self.minimum_speed_constraint}")

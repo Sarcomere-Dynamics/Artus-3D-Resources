@@ -35,14 +35,7 @@ while True:
     artus.joints['middle_d2'].input_angle = 60
     artus.send_target_command()
     time.sleep(sleep)
-    artus.joints['ring_flex'].input_angle = 80
-    artus.joints['ring_d2'].input_angle = 60
-    artus.send_target_command()
-    time.sleep(sleep)
-    artus.joints['pinky_flex'].input_angle = 80
-    artus.joints['pinky_d2'].input_angle = 60
-    artus.send_target_command()
-    time.sleep(sleep)
+    artus.joints['ring_flex'].input_angle = 8src/ArtusAPI'
 
 
     input("open?")

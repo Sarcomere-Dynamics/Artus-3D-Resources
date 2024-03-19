@@ -1,0 +1,82 @@
+{
+    "thumb_flex":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "thumb_spread":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "thumb_d2":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "thumb_d1":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "index_flex":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "index_spread":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "index_d2":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "middle_flex":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "middle_spread":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "middle_d2":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "ring_flex":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "ring_spread":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "ring_d2":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "pinky_flex":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "pinky_spread":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    },
+    "pinky_d2":
+    {
+        "input_angle": 0,
+        "input_speed": 90
+    }
+}

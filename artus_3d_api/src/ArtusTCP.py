@@ -1,20 +1,20 @@
+from src.ArtusCommunicator import ArtusCommunicator
+
 import socket
 import time
 import os
 import subprocess
 import platform
 import psutil
-import logging
+import select
 
-class PythonServer:
+class ArtusTCP(ArtusCommunicator):
 
     def __init__(self,
                  HEADER = 64,# Header size
                  FORMAT = "utf-8", # Format of the message
                  DISCONNECT_MESSAGE = "!DISCONNECT", # Disconnection message from the client
                  port= 5050,
-                 reqReturnFlag= False,
-                 DONECOMMAND = 211,
                  target_ssid="Artus3DTester"):
         
         self.HEADER = HEADER
@@ -27,7 +27,6 @@ class PythonServer:
         # get ip automatically
         # self.server = socket.gethostbyname(socket.gethostname()) # 192.168.4.2
     
-
         # Port Number
         self.port = port
 
@@ -35,7 +34,7 @@ class PythonServer:
         self.conn = None
         self.addr = None
 
-        self.msg = ""
+        super().__init__()
 
     def _get_available_ip(self):
         gateway_ip = None
@@ -50,7 +49,8 @@ class PythonServer:
                         try:
                             return address.address
                         except KeyError:
-                            print(f"Error no gateway infomration available")
+                            # TODO logging
+                            None
 
         return None
 
@@ -72,13 +72,18 @@ class PythonServer:
 
         # listen for connections
         self.server_socket.listen()
-        print(f"[LISTENING] Server is listening on  {self.server_socket}:{self.port}")
+        # TODO Logging
+        # print(f"[LISTENING] Server is listening on  {self.server_socket}:{self.port}")
+        
         # Accept the connection
         try:
             self.conn, self.addr = self.server_socket.accept()
-            print(f"[NEW CONNECTION] {self.addr} connected.")
+            # TODO logging
+            # print(f"[NEW CONNECTION] {self.addr} connected.")
         except TimeoutError as e:
-            print(f"Timeout Error - unable to connect")
+            # TODO logging
+            # print(f"Timeout Error - unable to connect")
+            None
         time.sleep(1)
 
     def _find_ssid(self):
@@ -96,7 +101,9 @@ class PythonServer:
                 subprocess.run(save_profile_cmd,shell=True)
                 time.sleep(1)
                 if not os.path.isfile(os.getcwd()+'\\Wi-Fi-'+self.target_ssid+'.xml'):
-                    logging.error('no wifi profile created')
+                    # logging.error('no wifi profile created')
+                    # TODO logging
+                    None
 
             else:
                 # connect to profile 
@@ -113,14 +120,14 @@ class PythonServer:
             subprocess.run(connect_command, shell=True)
         
         else:
-            print(f"platform not found")
+            # print(f"platform not found")
+            # TODO logging
+            None
 
         # wait X seconds to connect
         for i in range(10):
             time.sleep(0.01)
-            print(".",end="")
-        print("")
-
+            # TODO logging
 
     def close(self):
         self.server_socket.close()
@@ -137,32 +144,40 @@ class PythonServer:
             subprocess.run(disconnect_command, shell=True)
 
         else:
-            print("Unsupported operating system")
+            #TODO logging
+            # print("Unsupported operating system")
             return
 
-        print(f"Disconnecting from SSID '{self.target_ssid}'...")
+        # print(f"Disconnecting from SSID '{self.target_ssid}'...")
+        #TODO logging
         time.sleep(2)  # Wait for a few seconds for the disconnect to take effect
         return 
     
-    def receive(self):
-         # receive message of 1024 bytes (or an int)
-        
-        msg = self.conn.recv(234).decode(self.FORMAT) # 193 is byte size of feedback string 
-        ## TODO: make sure the packet is complete
-        if msg != self.msg:
-            self.msg = msg
-        return msg
-        # return "
+    def receive(self,data:list):
+        i = 0
+        byte_msg = self.conn.recv(1024) # maximum 100 bytes
+
+        if len(byte_msg) == 65:
+            # while i < 65:
+            #     # case when looking at int16_t values
+            #     if 17 <= i <= 47:
+            #         data[i] = int.from_bytes(bytes(byte_msg[i:i+2]),byteorder='little',signed=True)
+            #         i+=2
+            #     # general case where looking at single byte values -127 <-> 127
+            #     else:
+            #         data[i] = int.from_bytes(byte_msg[i:i+1],signed=True)
+            #         i+=1
+            return byte_msg
+
+        else:
+            return None
     
-    def send(self, command):
-        # list to str
-        # command = ','.join([str(x) for x in command])
-        # add a \n at the end of the str
-        command =  str(command)
-        # command += '\n'
-        # send encoded data
-        # print(command)
-        self.conn.send(command.encode(self.FORMAT))
+    def send(self, data:bytearray):
+        try:
+            self.conn.sendall(data)
+        except Exception as e:
+            # TODO insert error logging
+            None
     
     def close(self):
         if self.conn:
@@ -171,7 +186,8 @@ class PythonServer:
             self.server_socket.close()
         self.conn = None
         self.addr = None
-        print("[SERVER CLOSED]")
+        # print("[SERVER CLOSED]")
+        # TODO logging
     
     def flash_wifi(self): 
         acknowledged = False
